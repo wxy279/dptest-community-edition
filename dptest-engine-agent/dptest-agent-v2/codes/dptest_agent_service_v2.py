@@ -90,7 +90,7 @@ SUPPORTED_LINK_MODE_PATTERN = re.compile(r"(\d+)\s*base", re.IGNORECASE)
 DPDK_BOUND_DRIVER_NAMES = {"vfio-pci", "uio_pci_generic", "igb_uio"}
 DEFAULT_MANAGEMENT_CORE = 0
 DEFAULT_CRYPTO_WORKER_CORES: List[int] = []
-DEFAULT_WORKER_COMMON_CONFIG = {"monitor_malloc": 0, "gdb_debug_enable": True}
+DEFAULT_WORKER_COMMON_CONFIG = {"monitor_malloc": 0, "gdb_debug_enable": False}
 ENGINE_SOCKET_SIZE_SPECS = [2, 4, 8, 16, 32]
 deploy_lock = Lock()
 
@@ -788,7 +788,7 @@ class ThreadPolicyPayload(BaseModel):
     management_core: int = 0
     traffic_worker_cores: List[int]
     crypto_worker_cores: List[int]
-    worker_common_config: Dict[str, Any] = Field(default_factory=lambda: {"monitor_malloc": 0, "gdb_debug_enable": True})
+    worker_common_config: Dict[str, Any] = Field(default_factory=lambda: {"monitor_malloc": 0, "gdb_debug_enable": False})
 
     @field_validator("traffic_worker_cores")
     @classmethod
