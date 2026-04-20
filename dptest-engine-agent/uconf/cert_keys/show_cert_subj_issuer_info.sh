@@ -4,13 +4,13 @@ DIR="${1:-.}"
 
 find "$DIR" -type f -name "*.crt" | while read -r crt; do
     echo "=============================="
-    echo "文件: $crt"
+    echo "File: $crt"
 
     subject=$(openssl x509 -in "$crt" -noout -subject 2>/dev/null)
     issuer=$(openssl x509 -in "$crt" -noout -issuer 2>/dev/null)
 
     if [ $? -ne 0 ]; then
-        echo "读取失败: $crt 不是有效证书，或格式不受支持"
+        echo "Read failed: $crt is not a valid certificate, or the format is not supported"
     else
         echo "$subject"
         echo "$issuer"

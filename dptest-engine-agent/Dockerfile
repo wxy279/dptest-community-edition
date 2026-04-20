@@ -12,13 +12,13 @@ ENV LD_LIBRARY_PATH=${PYTHON_PREFIX}/lib:${OPENSSL_PREFIX}/lib
 
 WORKDIR /tmp
 
-# CentOS 7 已归档，切到 vault
+# CentOS 7 is archived, so switch package sources to the vault mirrors.
 RUN sed -i 's/^mirrorlist=/#mirrorlist=/g' /etc/yum.repos.d/CentOS-*.repo && \
     sed -i 's|^#baseurl=http://mirror.centos.org/centos/$releasever|baseurl=http://vault.centos.org/7.9.2009|g' /etc/yum.repos.d/CentOS-*.repo && \
     yum clean all && \
     yum makecache
 
-# 构建 OpenSSL / Python 所需依赖
+# Install build dependencies for OpenSSL and Python.
 RUN yum install -y \
     gcc \
     gcc-c++ \
@@ -43,7 +43,7 @@ RUN yum install -y \
     ca-certificates && \
     yum clean all
 
-# 1) 编译安装 OpenSSL 3.5.x
+# 1) Build and install OpenSSL 3.5.x.
 RUN wget https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz && \
     tar -xzf openssl-${OPENSSL_VERSION}.tar.gz && \
     cd openssl-${OPENSSL_VERSION} && \
@@ -58,7 +58,7 @@ RUN wget https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz && \
     echo "${OPENSSL_PREFIX}/lib" > /etc/ld.so.conf.d/openssl-${OPENSSL_VERSION}.conf && \
     ldconfig
 
-# 2) 用自定义 OpenSSL 编译安装 Python 3.12
+# 2) Build and install Python 3.12 against the custom OpenSSL.
 RUN wget https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz && \
     tar -xzf Python-${PYTHON_VERSION}.tgz && \
     cd Python-${PYTHON_VERSION} && \
@@ -74,19 +74,19 @@ RUN wget https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VER
     echo "${PYTHON_PREFIX}/lib" > /etc/ld.so.conf.d/python3.12.conf && \
     ldconfig
 
-# 3) 先验证 ssl/sqlite3 模块可用，避免后面 pip 才失败
+# 3) Verify the ssl and sqlite3 modules before later pip steps.
 RUN ${PYTHON_PREFIX}/bin/python3.12 -c "import ssl, sqlite3; print(ssl.OPENSSL_VERSION); print(sqlite3.sqlite_version)"
 
-# 4) 创建 venv
+# 4) Create the virtual environment.
 RUN ${PYTHON_PREFIX}/bin/python3.12 -m venv /opt/venv
 
-# 5) 安装 agent 依赖
+# 5) Install agent dependencies.
 COPY dptest-agent-v2/codes/requirements.txt /tmp/requirements.txt
 
 RUN /opt/venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \
     /opt/venv/bin/pip install --no-cache-dir -r /tmp/requirements.txt
 
-# 6) 瘦身：删除测试/缓存/静态库/源码
+# 6) Trim the image by removing tests, caches, static libraries, and sources.
 RUN find ${PYTHON_PREFIX} -type d \( -name test -o -name tests -o -name idle_test \) -prune -exec rm -rf {} + && \
     find ${PYTHON_PREFIX} -type f \( -name '*.pyc' -o -name '*.pyo' -o -name 'libpython*.a' \) -delete && \
     find /opt/venv -type d -name '__pycache__' -prune -exec rm -rf {} + && \
@@ -107,7 +107,7 @@ ENV PYTHON_PREFIX=/opt/python-3.12
 
 WORKDIR /usr/local/dproxy
 
-# 原有 engine 目录 + agent 目录
+# Create the engine and agent runtime directories.
 RUN mkdir -p \
     /usr/local/dproxy/app \
     /usr/local/dproxy/lib64 \
@@ -122,7 +122,7 @@ RUN mkdir -p \
     /opt/dptest-agent-v2/data/compiled \
     /tmp/dptest-agent-v2/rendered
 
-# engine 原有内容
+# Copy the engine runtime contents.
 COPY app/ /usr/local/dproxy/app/
 COPY lib64/ /usr/local/dproxy/lib64/
 COPY uconf/ /usr/local/dproxy/uconf/
@@ -130,30 +130,30 @@ COPY dpdkproxy.conf /etc/dproxy/
 COPY cert/ /usr/share/dproxy/cert/
 COPY license/ /usr/share/dproxy/license/
 
-# agent 代码和模板
+# Copy the agent code and templates.
 COPY dptest-agent-v2/codes/ /opt/dptest-agent-v2/codes/
 COPY dptest-agent-v2/templates/ /opt/dptest-agent-v2/templates/
 
-# 只复制运行时：OpenSSL + Python + venv
+# Copy only the runtime artifacts: OpenSSL, Python, and the virtual environment.
 COPY --from=pybuilder ${OPENSSL_PREFIX} ${OPENSSL_PREFIX}
 COPY --from=pybuilder ${PYTHON_PREFIX} ${PYTHON_PREFIX}
 COPY --from=pybuilder /opt/venv /opt/venv
 
-# 配置动态库
+# Configure dynamic library search paths.
 RUN printf "/usr/local/dproxy/lib64\n${OPENSSL_PREFIX}/lib\n${PYTHON_PREFIX}/lib\n" > /etc/ld.so.conf.d/dptest-engine.conf && \
     ldconfig && \
     chmod +x /usr/local/dproxy/app/dpdkproxy
 
-# 兼容旧路径（如果代码里还有 /opt/dptest-agent）
+# Keep the legacy path for compatibility if any code still references /opt/dptest-agent.
 RUN ln -s /opt/dptest-agent-v2 /opt/dptest-agent
 
-# 运行时环境变量
+# Runtime environment variables.
 ENV LD_LIBRARY_PATH=/usr/local/dproxy/lib64:${OPENSSL_PREFIX}/lib:${PYTHON_PREFIX}/lib
 ENV PATH=/opt/venv/bin:${PYTHON_PREFIX}/bin:${OPENSSL_PREFIX}/bin:$PATH
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# dptest-agent 默认配置
+# Default dptest-agent configuration.
 ENV DPTEST_TEMPLATE_DIR=/opt/dptest-agent-v2/templates \
     DPTEST_DEPLOY_DIR=/etc/dproxy \
     DPTEST_DEPLOY_FILENAME=dpdkproxy.conf \
@@ -170,9 +170,9 @@ ENV DPTEST_TEMPLATE_DIR=/opt/dptest-agent-v2/templates \
     DPTEST_V2_DB_PATH=/opt/dptest-agent-v2/data/dptest_agent_v2.db \
     DPTEST_V2_COMPILED_DIR=/opt/dptest-agent-v2/data/compiled
 
-# agent API 端口；10086 是压测运行时 monitor 端口
+# Agent API port; 10086 is the runtime monitor port used during tests.
 EXPOSE 18081 10086
 
-# 默认启动 agent；dpdkproxy 由 agent API 触发
+# Start the agent by default; dpdkproxy is launched through the agent API.
 WORKDIR /opt/dptest-agent-v2/codes
 CMD ["python", "-m", "uvicorn", "dptest_agent_service_v2:app", "--host", "0.0.0.0", "--port", "18081"]
