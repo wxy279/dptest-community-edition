@@ -1,7 +1,7 @@
 ---
 name: dptest-agent-v2-workflow
 description: Operate the local dptest-agent-service-v2 API safely and accurately. Use when an AI agent needs to explain or execute the 0-to-1 test-case flow, inspect templates or live interfaces, create project resources, use scenario presets, preview or launch runs, switch metrics or request methods, or switch application instances between HTTPS and HTTP3.
-version: 1.0.0
+version: 1.1.0
 ---
 
 # dptest Agent V2 Workflow
@@ -15,6 +15,7 @@ Read `workflows/workflows.md` when the task needs:
 - dual-end guidance and scale-out patterns
 - day-2 metric, request-method, or protocol switching
 - current compile, preview, run, and stop semantics
+- stage-aware monitor timing and result interpretation during a run
 - current repository constraints and guardrails
 
 ## Assumptions
@@ -35,6 +36,10 @@ Assume:
 5. Prefer mutating the existing application instance with `recipe-*`, `metric-*`, or `protocol-switch-*` when the user wants day-2 changes.
 6. Prefer `scenario preset` when the user wants a reusable dual-end topology or wants to scale beyond one pair cleanly.
 7. Treat standalone thread-policy and engine-launch-profile resources as legacy or advanced paths; the runtime can derive effective values automatically.
+8. Do not treat the first monitor snapshot after `runs` as throughput evidence. Engine startup, config loading, and the `delay` stage can legitimately show zero live traffic.
+9. Treat `steady State` as the main observation window for live CPS, HPS, RPS, and similar rate metrics.
+10. Capture a near-final monitor snapshot shortly before `ramp down` finishes. Use that snapshot for cumulative totals such as attempts, successes, bytes, packets, handshakes, and close counts.
+11. For agent-authored load profiles, require a leading `delay` stage with `height = 0`, `ramp_time = 0`, and `steady_time >= 20`. The current API may accept shorter delays, but the skill should not propose them.
 
 ## Important current constraints
 
@@ -46,6 +51,7 @@ Assume:
 6. Engine launch settings are derived from total system memory and service defaults unless explicitly overridden.
 7. HTTPS to HTTP3 switching for dual-end mode currently has a built-in mapping between `dual_end_https_midbox_sm2_gcm_rps` and `dual_end_http3_midbox_rps`.
 8. Single-client HTTPS to HTTP3 switching is supported, but callers should pass `target_template_id`.
+9. During `delay`, early `ramp up`, or late `ramp down`, live CPS, HPS, and RPS may be zero or unrepresentative without indicating a failure by themselves.
 
 ## Response guidance
 
@@ -54,4 +60,3 @@ When the user asks for a script or a sequence:
 1. provide the 0-to-1 flow first
 2. then provide the day-2 mutation flow if needed
 3. call out the current repository limits instead of inventing unsupported behavior
-

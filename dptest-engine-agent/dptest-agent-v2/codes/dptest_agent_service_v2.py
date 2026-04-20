@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import json
 import os
@@ -72,6 +72,7 @@ CANONICAL_LOAD_STAGE_NAMES = {
     "ramp_down": "ramp down",
     "ramp down": "ramp down",
 }
+MIN_DELAY_STAGE_SECONDS = 20
 
 RUN_STARTUP_WAIT_SECONDS = float(os.getenv("DPTEST_V2_RUN_STARTUP_WAIT_SECONDS", "1.0").strip())
 RUN_STOP_WAIT_SECONDS = float(os.getenv("DPTEST_V2_RUN_STOP_WAIT_SECONDS", "3.0").strip())
@@ -958,7 +959,16 @@ class LoadProfilePayload(BaseModel):
     @classmethod
     def validate_stages(cls, v: List[LoadStage]) -> List[LoadStage]:
         if not v:
-            raise ValueError("stages 涓嶈兘涓虹┖")
+            raise ValueError("stages must not be empty")
+        first_stage = v[0]
+        if first_stage.stage != "delay":
+            raise ValueError("load profiles must start with a delay stage")
+        if first_stage.height != 0:
+            raise ValueError("the delay stage must use height 0")
+        if first_stage.ramp_time != 0:
+            raise ValueError("the delay stage must use ramp_time 0")
+        if first_stage.steady_time < MIN_DELAY_STAGE_SECONDS:
+            raise ValueError(f"the delay stage must use steady_time >= {MIN_DELAY_STAGE_SECONDS}")
         return v
 
 

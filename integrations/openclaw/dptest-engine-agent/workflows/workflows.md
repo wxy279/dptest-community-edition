@@ -21,6 +21,12 @@ Use this order for the normal hand-built workflow:
 13. call `launch-preview`
 14. call `compile` or `runs`
 
+When creating or editing the load profile in step 6:
+
+- always place `delay` first
+- for agent-authored payloads, use `height = 0`, `ramp_time = 0`, and `steady_time >= 20`
+- treat shorter `delay` values in existing examples or legacy payloads as historical, not recommended
+
 ## Why this order matters
 
 - interface objects should reflect current PCI and link reality
@@ -127,6 +133,23 @@ Common parameter areas include:
 - latency controls
 - persistent-session and redirect controls
 
+## Load-profile stage guidance
+
+When an AI agent authors a load profile, describe and apply these rules:
+
+- use the canonical stage names `delay`, `ramp up`, `stair step`, `steady State`, and `ramp down`
+- require a leading `delay` stage in all newly proposed load profiles
+- set the `delay` stage to `height = 0`, `ramp_time = 0`, and `steady_time >= 20`
+- treat `steady State` as the main stage for interpreting live throughput values
+- treat `ramp down` as the wind-down period where live rates may drop to zero while cumulative counters are still meaningful
+
+When explaining stage meaning to users:
+
+- `delay` covers config loading, engine warm-up, and any intentional no-traffic wait time
+- `ramp up` and `stair step` are transition stages, so live rates there are not the final target value
+- `steady State` is the current best window for reporting live CPS, HPS, RPS, or TPUT
+- near the end of `ramp down`, prefer cumulative counters such as attempts, successes, handshakes, bytes, and packets over instantaneous rates
+
 ## Compile and run semantics
 
 Describe current behavior like this:
@@ -144,6 +167,24 @@ Useful run endpoints:
 - `POST /v2/runs/{run_id}/stop`
 - `GET /v2/runs/{run_id}/summary`
 - `GET /v2/runs/{run_id}/diagnosis`
+
+## Run observation and monitor timing
+
+Use a stage-aware observation strategy after `runs` starts:
+
+1. confirm the run was created and the process is alive, but do not treat the first monitor fetch as throughput evidence
+2. expect little or no live traffic during startup, config loading, and the `delay` stage
+3. during `ramp up` and `stair step`, treat live CPS, HPS, and RPS as transitional values
+4. fetch the main live-rate snapshot during `steady State`
+5. fetch one near-final snapshot shortly before `ramp down` completes
+6. use the near-final snapshot for cumulative totals, even if instantaneous rates are already near zero
+
+Use these interpretation rules:
+
+- do not classify zero live traffic during `delay`, early `ramp up`, or late `ramp down` as a failure by itself
+- if the run is already in `steady State` and live rates are still near zero, then start diagnosing configuration or connectivity issues
+- prefer `GET /v2/runs/{run_id}/summary` or `GET /v2/summary/current` for stage-aware reporting
+- prefer `GET /v2/runs/{run_id}/diagnosis` or `GET /v2/diagnosis/current` only after the current stage has been considered
 
 ## Derived runtime behavior
 
@@ -182,4 +223,3 @@ An AI agent should:
 3. prefer preview endpoints over immediate launch
 4. reuse the existing application instance for day-2 changes
 5. use scenario presets for reusable dual-end topologies
-

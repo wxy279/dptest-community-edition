@@ -112,8 +112,9 @@ curl --noproxy '*' -sS \
     "stress_mode": "SimUsers",
     "max_connection_attemps": 9223372036854775807,
     "stages": [
-      {"stage": "delay", "repetitions": 1, "height": 0, "ramp_time": 0, "steady_time": 10},
+      {"stage": "delay", "repetitions": 1, "height": 0, "ramp_time": 0, "steady_time": 20},
       {"stage": "ramp up", "repetitions": 1, "height": 2, "ramp_time": 2, "steady_time": 2},
+      {"stage": "stair step", "repetitions": 1, "height": 2, "ramp_time": 2, "steady_time": 2},
       {"stage": "steady State", "repetitions": 1, "height": 10, "ramp_time": 2, "steady_time": 120},
       {"stage": "ramp down", "repetitions": 1, "height": 0, "ramp_time": 8, "steady_time": 0}
     ]
@@ -206,4 +207,3 @@ curl --noproxy '*' -sS \
     "apply_after_deploy": true
   }'
 ```
-

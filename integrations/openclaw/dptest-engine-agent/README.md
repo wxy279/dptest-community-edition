@@ -18,7 +18,7 @@ Typical prerequisites:
 - `SKILL.md`
   Compact operational rules for the AI agent.
 - `workflows/workflows.md`
-  Expanded workflow guidance for 0-to-1 setup, scenario presets, and day-2 mutations.
+  Expanded workflow guidance for 0-to-1 setup, scenario presets, day-2 mutations, and stage-aware run monitoring.
 
 ## Current API scope
 
@@ -33,6 +33,7 @@ This package covers:
 - client and server modeling
 - test-case validation, preview, compile, and run
 - run stop, summary, and diagnosis
+- stage-aware interpretation of monitor and summary data
 - scenario-preset composition
 - metric, recipe, and protocol switching
 
@@ -57,10 +58,10 @@ use:
 2. read `workflows/workflows.md`
 3. verify the live environment with `/health` and `/v2/application-templates`
 4. follow the 0-to-1 or scenario-preset workflow that matches the user request
+5. when a run is launched, follow the stage-aware monitor timing guidance before concluding success, throughput, or failure
 
 ## Related repository documents
 
 - [../../../docs/agent-integration.md](../../../docs/agent-integration.md)
 - [../../../examples/README.md](../../../examples/README.md)
 - [../README.md](../README.md)
-
